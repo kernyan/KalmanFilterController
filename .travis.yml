@@ -1,0 +1,14 @@
+sudo: false  
+
+language: cpp
+
+compiler:
+  - clang
+
+script:
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - cd Test/UnitTests/
+  - ./UnitTests
