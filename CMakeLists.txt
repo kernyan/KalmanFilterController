@@ -9,6 +9,6 @@ set(CMAKE_CXX_FLAGS, "${CXX_FLAGS}")
 set(CMAKE_C_COMPILER, "/usr/bin/clang")
 set(CMAKE_CXX_COMPILER, "/usr/bin/clang++")
 
-add_subdirectory(main)
+#add_subdirectory(main)
 add_subdirectory(Test)
 add_subdirectory(Lib)
