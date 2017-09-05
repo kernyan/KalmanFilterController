@@ -1,5 +1,5 @@
-#ifndef FusionEKF_H_
-#define FusionEKF_H_
+#ifndef FusionKF_H_
+#define FusionKF_H_
 
 #include "measurement_package.h"
 #include "Eigen/Dense"
@@ -34,4 +34,4 @@ private:
 
 VectorXd CalculateRMSE(const vector<VectorXd> &estimations,
                        const vector<VectorXd> &ground_truth);
-#endif /* FUSION_EKF_H */
+#endif /* FUSION_KF_H */
