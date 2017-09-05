@@ -1,0 +1,5 @@
+file(GLOB SRCS *.cpp)
+include_directories(${PROJECT_SOURCE_DIR}/Lib/src/)
+include_directories(${PROJECT_SOURCE_DIR}/main/)
+add_executable(UnitTests ${SRCS})
+target_link_libraries(UnitTests Lib libgtest libgmock)
