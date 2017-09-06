@@ -11,17 +11,25 @@
 
 using namespace std;
 
+enum SensorModel{
+  CONSTANT_VELOCITY,
+  CONSTANT_TURNRATE_VELOCITY
+};
+
+
 class FusionKF {
 public:
   
   list<ParametricKF*> filters_;
   void AddLaserLKF();
   void AddRadarEKF();
+  void AddRadarUKF();
   void ProcessMeasurement(MeasurementPackage &meas_in);
   VectorXd GetMu() const {return Mu_;};
   MatrixXd GetSigma() const {return Sigma_;};
 
-  FusionKF();
+  FusionKF() = delete;
+  FusionKF(SensorModel Model_in);
   ~FusionKF();
 
 private:

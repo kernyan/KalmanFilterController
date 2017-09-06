@@ -296,7 +296,7 @@ class FusionTest : public :: testing::Test {
 };
 
 TEST_F(FusionTest, FusionLaserLKF){
-  FusionKF FKF;
+  FusionKF FKF(CONSTANT_VELOCITY);
   FKF.AddLaserLKF();
 
   FKF.ProcessMeasurement(measL1);
@@ -342,7 +342,7 @@ TEST_F(FusionTest, FusionLaserLKF){
 }
 
 TEST_F(FusionTest, FusionRadarEKF){
-  FusionKF FKF;
+  FusionKF FKF(CONSTANT_VELOCITY);
   FKF.AddRadarEKF();
 
   FKF.ProcessMeasurement(measR1);
@@ -387,7 +387,7 @@ TEST_F(FusionTest, FusionRadarEKF){
 }
 
 TEST_F(FusionTest, FusionLaserAndRadar){
-  FusionKF FKF;
+  FusionKF FKF(CONSTANT_VELOCITY);
   FKF.AddRadarEKF();
   FKF.AddLaserLKF();
   FKF.ProcessMeasurement(measL1);
@@ -413,4 +413,22 @@ TEST_F(FusionTest, FusionLaserAndRadar){
   for (int i = 0; i < Calc2.size(); ++i){
     EXPECT_NEAR(Calc2[i], Ans2[i], 0.001) << "for i: " << i;
   }
+}
+
+
+TEST(UnscentedTest, SimpleRun){
+  FusionKF FKF(CONSTANT_TURNRATE_VELOCITY);
+  FKF.AddRadarUKF();
+  MeasurementPackage meas_in;
+  meas_in.timestamp_ = 0;
+  meas_in.raw_measurements_ = VectorXd(3);
+  meas_in.raw_measurements_ << 5.9214,0.2187,2.0062;
+  
+  FKF.ProcessMeasurement(meas_in);
+  //cout << "Mu\n" << FKF.GetMu() << endl;
+
+  MeasurementPackage meas_in2;
+  meas_in.timestamp_ = 100000;
+  meas_in.raw_measurements_ = VectorXd(3);
+  meas_in.raw_measurements_ << 5.9214,0.2187,2.0062;
 }

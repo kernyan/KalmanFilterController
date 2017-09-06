@@ -8,19 +8,45 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
-FusionKF::FusionKF() :
+FusionKF::FusionKF(SensorModel Model_in) :
   IsFirstTime (true),
   previous_time_(-1)
 {
-  Mu_ = VectorXd(4);
-  Mu_ << 0,0,0,0;
+  switch (Model_in){
 
-  Sigma_ = MatrixXd(4,4);
-  Sigma_ << 1,0,0,0,
-            0,1,0,0,
-            0,0,1000,0,
-            0,0,0,1000;
+  case CONSTANT_VELOCITY:
+
+    Mu_ = VectorXd(4);
+    Mu_ << 0,0,0,0;
+
+    Sigma_ = MatrixXd(4,4);
+    Sigma_ << 1,0,0,0,
+              0,1,0,0,
+              0,0,1000,0,
+              0,0,0,1000;
+
+    break;
+
+  case CONSTANT_TURNRATE_VELOCITY:
+
+    Mu_ = VectorXd(5);
+    Mu_ << 0,0,0,0,0; // TODO: Right init?
+
+    Sigma_ = MatrixXd(5,5);
+    Sigma_ << 0.15,0   ,0,0,0,
+              0   ,0.15,0,0,0,
+              0   ,0   ,0,0,0,
+              0   ,0   ,0,0,0,
+              0   ,0   ,0,0,0;
+
+    break;
+
+  default:
+
+    assert(0);
+  }
 }
+
 
 FusionKF::~FusionKF(){
   for (auto &each : filters_){
@@ -46,6 +72,17 @@ void FusionKF::AddRadarEKF(){
   RadarFilter->Initialize();
   filters_.push_back(RadarFilter);
 }
+
+
+void FusionKF::AddRadarUKF(){
+  
+  // Radar Filter
+  
+  RadarUKF *RadarFilter = new RadarUKF(Mu_, Sigma_, previous_time_);
+  RadarFilter->Initialize();
+  filters_.push_back(RadarFilter);
+}
+
 
 void FusionKF::ProcessMeasurement(MeasurementPackage &meas_in){
   if (IsFirstTime){

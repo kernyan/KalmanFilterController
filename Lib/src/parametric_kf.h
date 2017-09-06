@@ -137,7 +137,7 @@ class RadarEKF : public ExtendedKF {
 };
 
 
-using Func2 = function<VectorXd (double, VectorXd)>;
+using Func2 = function<VectorXd (double, const VectorXd &)>;
 
 class UnscentedKF : public ParametricKF{
   
@@ -149,23 +149,12 @@ public:
       Func2 &g_in,
       MatrixXd &Rt_in,
       MatrixXd &nu_in,
-      //function<void (MatrixXd &)> &Norm_in;
 			Func2 &h_in,
 			MatrixXd &Qt_in);
   virtual void Step(MeasurementPackage &meas_in) override;
-  VectorXd GetMuBar() const {return MuBar_;};
-  MatrixXd GetSigmaBar() const {return SigmaBar_;};
-
     
 protected:
 
-	//virtual void CalculateMuBar();
-	//virtual void CalculateSigmaBar();
-	//virtual MatrixXd CalculateMeasurementVar();
-	//virtual VectorXd CalculatePredictedMeasurement();
-  //MatrixXd CalculatePredJacobian() const;
-  //MatrixXd CalculateMeasJacobian() const;
-  
   void InitWeights();
   MatrixXd GenerateSigPts(const VectorXd &x_in,
       const MatrixXd &Sig_in) const;
@@ -191,14 +180,25 @@ protected:
   double lambda_; // sigma point spreading parameter
   VectorXd weights_; // sigma point weights
 
-	VectorXd MuBar_;
-	MatrixXd SigmaBar_;
 	Func2 g_; // TransitionFunc
 	MatrixXd Rt_; // TransitionSigma
   MatrixXd nu_; // process noise
-  //function<void (MatrixXd &)> Norm_;
 	Func2 h_;      // MeasurementFunction
 	MatrixXd Qt_; // MeasurementSigma
+};
+
+
+class RadarUKF : public UnscentedKF {
+
+  public:
+    
+    RadarUKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in);
+    virtual void Step(MeasurementPackage &meas_in) override final;
+    void Initialize();
+
+  private:
+  
+    const SensorType Sensor_ = RADAR;
 };
 #endif /* PARAMETRIC_KF_H_ */
 

@@ -275,20 +275,18 @@ void UnscentedKF::Initialize(
     Func2 &g_in,
     MatrixXd &Rt_in,
     MatrixXd &nu_in,
-//    function<void (MatrixXd &)> &Norm_in,
     Func2 &h_in,
     MatrixXd &Qt_in){
   g_ = g_in;
   Rt_ = Rt_in;
   nu_ = nu_in;
- // Norm_ = Norm_in;
   h_ = h_in;
   Qt_ = Qt_in;
 }
 
 
 void UnscentedKF::InitWeights(){
-  lambda_ = 3 - n_aug_;
+
   double w_i = 0.5 / (n_aug_ + lambda_);
   weights_ = VectorXd(1 + 2*n_aug_);
   weights_.fill(w_i);
@@ -423,3 +421,93 @@ void UnscentedKF::Step(MeasurementPackage &meas_in){
 }
 
 
+void RadarUKF::Step(MeasurementPackage &meas_in){
+
+  if (Sensor_ != meas_in.sensor_type_) return;
+
+  UnscentedKF::Step(meas_in);
+}
+
+
+void RadarUKF::Initialize(){
+
+  n_x_ = 5;
+  n_aug_ = n_x_ + 2;
+  lambda_ = 3 - n_aug_;
+
+  InitWeights();
+
+  auto n_x = n_x_;
+  Func2 g_in = [n_x](double dt, const VectorXd &x_in){
+    double px       = x_in(0);
+    double py       = x_in(1);
+    double v        = x_in(2);
+    double yaw      = x_in(3);
+    double yawd     = x_in(4);
+    double nu_a     = x_in(5);
+    double nu_yawdd = x_in(6);
+
+    double px_p, py_p, v_p, yaw_p, yawd_p = 0;
+
+    if (fabs(yawd) > 0.001){
+      px_p = px+(v/yawd)*( sin(yaw+yawd*dt) - sin(yaw));
+      py_p = py+(v/yawd)*(-cos(yaw+yawd*dt) + cos(yaw));
+    } else {
+      px_p = v * dt * cos(yaw);
+      py_p = v * dt * sin(yaw);
+    }
+
+    px_p  += 0.5 * dt * dt * nu_a * cos(yaw);
+    py_p  += 0.5 * dt * dt * nu_a * sin(yaw);
+    v_p    = v + dt * nu_a;
+    yaw_p  = yaw + yawd * dt + 0.5 * dt * dt * nu_yawdd;
+    yawd_p = yawd + dt * nu_yawdd;
+
+    VectorXd Out = VectorXd::Constant(n_x, 0.0);
+    Out << px_p, py_p, v_p, yaw_p, yawd_p;
+
+    return Out;
+  };
+  
+  MatrixXd Rt_in = MatrixXd::Identity(n_x_, n_x_);
+  Rt_in(0,0) = 0.15; // TODO: Right init?
+  Rt_in(1,1) = 0.15;
+
+  double noise_a = 4; // TODO: Right init?
+  double noise_yawdd = 0.09;
+  MatrixXd nu_in(n_aug_-n_x_, n_aug_-n_x_);
+  nu_in(0,0) = noise_a; // longitud acceleration process var
+  nu_in(1,1) = noise_yawdd; // yaw acceleration process var
+  
+  Func2 h_in = [](double dt, const VectorXd x_in){
+
+    short kMeasurement = 3; // for rho, phi, and rho dot
+    double px   = x_in(0);
+    double py   = x_in(1);
+    double v    = x_in(2);
+    double yaw  = x_in(3);
+    double vx   = v * cos(yaw);
+    double vy   = v * sin(yaw);
+
+    VectorXd Out = VectorXd::Constant(kMeasurement, 0.0);
+
+    Out(0) = sqrt(px*px + py*py);
+    Out(1) = atan2(py, px);
+    Out(2) = (px * vx + py * vy)/Out(0);
+
+    return Out;
+  };
+
+  MatrixXd Qt_in(3,3);
+  Qt_in << 0.09,0     ,0,
+           0   ,0.0009,0,
+           0   ,0     ,0.09;
+
+  UnscentedKF::Initialize(g_in, Rt_in, nu_in, h_in, Qt_in);
+}
+
+
+RadarUKF::RadarUKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in) :
+  UnscentedKF(Mu_in, Sigma_in, t_in)
+{
+}
