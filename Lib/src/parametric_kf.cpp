@@ -294,15 +294,17 @@ void UnscentedKF::InitWeights(){
 }
 
 
-MatrixXd UnscentedKF::GenerateAugSigPts() const {
+MatrixXd UnscentedKF::GenerateAugSigPts(const VectorXd &m_in,
+    const MatrixXd &P_in, 
+    const MatrixXd &nu_in) const {
   VectorXd x_aug = VectorXd::Constant(n_aug_, 0.0);
-  x_aug.head(n_x_) = Mu_; // assumes 0 mean of noise process
+  x_aug.head(n_x_) = m_in; // assumes 0 mean of noise process
 
   int kAugSigPts = 1 + n_aug_ * 2;
-  MatrixXd Rt_aug = MatrixXd::Constant(n_aug_, n_aug_, 0.0);
-  Rt_aug.topLeftCorner(n_x_, n_x_) = Rt_;
-  Rt_aug.bottomRightCorner(n_aug_-n_x_, n_aug_-n_x_) = nu_;
-  return GenerateSigPts(x_aug, Rt_aug);
+  MatrixXd P_aug = MatrixXd::Constant(n_aug_, n_aug_, 0.0);
+  P_aug.topLeftCorner(n_x_, n_x_) = P_in;
+  P_aug.bottomRightCorner(n_aug_-n_x_, n_aug_-n_x_) = nu_in;
+  return GenerateSigPts(x_aug, P_aug);
 }
 
 
@@ -331,11 +333,17 @@ MatrixXd UnscentedKF::Func_SigPtsSet(Func2 &f_in, double dt,
     const MatrixXd &SigSet_in) const {
 
   int kSigPtsSet = SigSet_in.cols();
-  MatrixXd Out = MatrixXd::Constant(n_x_, kSigPtsSet, 0.0);
+
+  VectorXd Temp = f_in(dt, SigSet_in.col(0));
+  int Dim = Temp.rows();
+
+  MatrixXd Out = MatrixXd::Constant(Dim, kSigPtsSet, 0.0);
 
   for (int i = 0; i < kSigPtsSet; ++i){
     Out.col(i) = f_in(dt, SigSet_in.col(i));
   }
+
+  return Out;
 }
 
 
@@ -356,6 +364,8 @@ VectorXd UnscentedKF::WeightedMean(
   for (int i = 0; i < kSigPtsSet; ++i){
     Out += weights_(i) * SigPtsSet_in.col(i);
   }
+
+  return Out;
 }
 
 
@@ -391,6 +401,19 @@ MatrixXd UnscentedKF::Covariance(const MatrixXd &a_in,
 }
 
 
+void UnscentedKF::NormToPi(int Row_in, MatrixXd Mat_in) const {
+  
+ int Dim = Mat_in.cols();
+
+ for (int i = 0; i < Dim; ++i){
+   while (Mat_in.col(i)(Row_in) > M_PI)
+     Mat_in.col(i)(Row_in) -= 2.*M_PI;
+   while (Mat_in.col(i)(Row_in) < -M_PI)
+     Mat_in.col(i)(Row_in) += 2.*M_PI;
+ }
+}
+
+
 void UnscentedKF::Step(MeasurementPackage &meas_in){
   
   double dt = meas_in.timestamp_ - previous_time_;
@@ -398,16 +421,19 @@ void UnscentedKF::Step(MeasurementPackage &meas_in){
 
   dt *= 0.000001; // scale to seconds
 
-  MatrixXd AugSigPts = GenerateAugSigPts();
+  cout << "dt " << dt << endl;
+
+  MatrixXd AugSigPts = GenerateAugSigPts(Mu_, Sigma_, nu_);
   MatrixXd XSig_Pred = Func_SigPtsSet(g_, dt, AugSigPts);
   VectorXd Mu_Bar = WeightedMean(XSig_Pred);
   MatrixXd FirstMoment = CentralMoment(XSig_Pred, Mu_Bar);
-  MatrixXd Sigma_Bar=Covariance(FirstMoment,FirstMoment)+Rt_;
+  MatrixXd Sigma_Bar=Covariance(FirstMoment,FirstMoment);
 
   // common to replace with other implementation
   // e.g. 1. with reusing transition prediction sigma pts, or
   //      2. with Linear measurement update if linear
-  MatrixXd SigPts = GenerateSigPts(Mu_Bar, Sigma_Bar);
+  MatrixXd nu_0 = MatrixXd::Zero(2,2);
+  MatrixXd SigPts = GenerateAugSigPts(Mu_Bar, Sigma_Bar,nu_0);
   MatrixXd ZSig_Pred = Func_SigPtsSet(h_, dt, SigPts);
   VectorXd Zhat = WeightedMean(ZSig_Pred);
   MatrixXd FirstMoment2 = CentralMoment(ZSig_Pred, Zhat);
@@ -425,7 +451,34 @@ void RadarUKF::Step(MeasurementPackage &meas_in){
 
   if (Sensor_ != meas_in.sensor_type_) return;
 
-  UnscentedKF::Step(meas_in);
+  double dt = meas_in.timestamp_ - previous_time_;
+  previous_time_ = meas_in.timestamp_;
+
+  dt *= 0.000001; // scale to seconds
+
+
+  MatrixXd AugSigPts = GenerateAugSigPts(Mu_, Sigma_, nu_);
+  MatrixXd XSig_Pred = Func_SigPtsSet(g_, dt, AugSigPts);
+  VectorXd Mu_Bar = WeightedMean(XSig_Pred);
+  MatrixXd FirstMoment = CentralMoment(XSig_Pred, Mu_Bar);
+  NormToPi(3, FirstMoment); // yaw to within +/- pi
+  MatrixXd Sigma_Bar=Covariance(FirstMoment,FirstMoment);
+
+  // Reusing transition prediction sigma pts
+  MatrixXd ZSig_Pred = Func_SigPtsSet(h_, dt, XSig_Pred);
+  VectorXd Zhat = WeightedMean(ZSig_Pred);
+  MatrixXd FirstMoment2 = CentralMoment(ZSig_Pred, Zhat);
+  NormToPi(1, FirstMoment2); // phi to within +/- pi
+  MatrixXd S = Covariance(FirstMoment2, FirstMoment2)+Qt_;
+  MatrixXd CrossCov = Covariance(FirstMoment, FirstMoment2);
+  MatrixXd K = CrossCov * S.inverse();
+  VectorXd y = meas_in.raw_measurements_ - Zhat;
+
+  while (y(1) >  M_PI) y(1) -= 2.*M_PI;
+  while (y(1) < -M_PI) y(1) += 2.*M_PI;
+
+  Mu_ = Mu_Bar + K * y;
+  Sigma_ = Sigma_Bar - K * S * K.transpose();
 }
 
 
@@ -475,7 +528,8 @@ void RadarUKF::Initialize(){
 
   double noise_a = 4; // TODO: Right init?
   double noise_yawdd = 0.09;
-  MatrixXd nu_in(n_aug_-n_x_, n_aug_-n_x_);
+  int Dim = n_aug_ - n_x_;
+  MatrixXd nu_in = MatrixXd::Constant(Dim, Dim, 0.0);
   nu_in(0,0) = noise_a; // longitud acceleration process var
   nu_in(1,1) = noise_yawdd; // yaw acceleration process var
   
@@ -508,6 +562,104 @@ void RadarUKF::Initialize(){
 
 
 RadarUKF::RadarUKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in) :
+  UnscentedKF(Mu_in, Sigma_in, t_in)
+{
+}
+
+
+void LaserUKF::Step(MeasurementPackage &meas_in){
+
+  if (Sensor_ != meas_in.sensor_type_) return;
+
+  //UnscentedKF::Step(meas_in);
+
+  double dt = meas_in.timestamp_ - previous_time_;
+  previous_time_ = meas_in.timestamp_;
+
+  dt *= 0.000001; // scale to seconds
+
+  MatrixXd AugSigPts = GenerateAugSigPts(Mu_, Sigma_, nu_);
+  MatrixXd XSig_Pred = Func_SigPtsSet(g_, dt, AugSigPts);
+  VectorXd Mu_Bar = WeightedMean(XSig_Pred);
+  MatrixXd FirstMoment = CentralMoment(XSig_Pred, Mu_Bar);
+  NormToPi(3, FirstMoment); // yaw to within +/- pi
+  MatrixXd Sigma_Bar=Covariance(FirstMoment,FirstMoment);
+
+  // Linear measurement update since laser meas is linear
+  MatrixXd H = MatrixXd::Identity(2,5);
+  VectorXd Zhat = H * Mu_Bar;
+  VectorXd y = meas_in.raw_measurements_ - Zhat;
+  MatrixXd S = H * Sigma_Bar * H.transpose() + Qt_;
+  MatrixXd K = Sigma_Bar * H.transpose() * S.inverse();
+
+  Mu_ = Mu_Bar + K * y;
+  Sigma_ = Sigma_Bar - K * S * K.transpose();
+}
+
+
+void LaserUKF::Initialize(){
+
+  n_x_ = 5;
+  n_aug_ = n_x_ + 2;
+  lambda_ = 3 - n_aug_;
+
+  InitWeights();
+
+  auto n_x = n_x_;
+  Func2 g_in = [n_x](double dt, const VectorXd &x_in){
+    double px       = x_in(0);
+    double py       = x_in(1);
+    double v        = x_in(2);
+    double yaw      = x_in(3);
+    double yawd     = x_in(4);
+    double nu_a     = x_in(5);
+    double nu_yawdd = x_in(6);
+
+    double px_p, py_p, v_p, yaw_p, yawd_p = 0;
+
+    if (fabs(yawd) > 0.001){
+      px_p = px+(v/yawd)*( sin(yaw+yawd*dt) - sin(yaw));
+      py_p = py+(v/yawd)*(-cos(yaw+yawd*dt) + cos(yaw));
+    } else {
+      px_p = v * dt * cos(yaw);
+      py_p = v * dt * sin(yaw);
+    }
+
+    px_p  += 0.5 * dt * dt * nu_a * cos(yaw);
+    py_p  += 0.5 * dt * dt * nu_a * sin(yaw);
+    v_p    = v + dt * nu_a;
+    yaw_p  = yaw + yawd * dt + 0.5 * dt * dt * nu_yawdd;
+    yawd_p = yawd + dt * nu_yawdd;
+
+    VectorXd Out = VectorXd::Constant(n_x, 0.0);
+    Out << px_p, py_p, v_p, yaw_p, yawd_p;
+
+    return Out;
+  };
+  
+  MatrixXd Rt_in = MatrixXd::Identity(n_x_, n_x_);
+  Rt_in(0,0) = 0.15; // TODO: Right init?
+  Rt_in(1,1) = 0.15;
+
+  double noise_a = 4; // TODO: Right init?
+  double noise_yawdd = 0.09;
+  int Dim = n_aug_ - n_x_;
+  MatrixXd nu_in = MatrixXd::Constant(Dim, Dim, 0.0);
+  nu_in(0,0) = noise_a; // longitud acceleration process var
+  nu_in(1,1) = noise_yawdd; // yaw acceleration process var
+  
+  Func2 h_in; // not used
+
+  MatrixXd Qt_in(2,2);
+  Qt_in << 0.0225, 0     ,
+           0     , 0.0225; 
+           
+
+  UnscentedKF::Initialize(g_in, Rt_in, nu_in, h_in, Qt_in);
+}
+
+
+LaserUKF::LaserUKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in) :
   UnscentedKF(Mu_in, Sigma_in, t_in)
 {
 }

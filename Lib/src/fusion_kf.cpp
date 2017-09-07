@@ -10,7 +10,8 @@ using std::vector;
 
 FusionKF::FusionKF(SensorModel Model_in) :
   IsFirstTime (true),
-  previous_time_(-1)
+  previous_time_(-1),
+  KinematicModel (Model_in)
 {
   switch (Model_in){
 
@@ -30,14 +31,15 @@ FusionKF::FusionKF(SensorModel Model_in) :
   case CONSTANT_TURNRATE_VELOCITY:
 
     Mu_ = VectorXd(5);
-    Mu_ << 0,0,0,0,0; // TODO: Right init?
+    //Mu_ << 0,0,0,0,0; // TODO: Right init?
+    Mu_ << 1,1,1,1,0.1;
 
     Sigma_ = MatrixXd(5,5);
     Sigma_ << 0.15,0   ,0,0,0,
               0   ,0.15,0,0,0,
-              0   ,0   ,0,0,0,
-              0   ,0   ,0,0,0,
-              0   ,0   ,0,0,0;
+              0   ,0   ,1,0,0,
+              0   ,0   ,0,1,0,
+              0   ,0   ,0,0,1;
 
     break;
 
@@ -74,6 +76,16 @@ void FusionKF::AddRadarEKF(){
 }
 
 
+void FusionKF::AddLaserUKF(){
+  
+  // Radar Filter
+  
+  LaserUKF *LaserFilter = new LaserUKF(Mu_, Sigma_, previous_time_);
+  LaserFilter->Initialize();
+  filters_.push_back(LaserFilter);
+}
+
+
 void FusionKF::AddRadarUKF(){
   
   // Radar Filter
@@ -92,6 +104,7 @@ void FusionKF::ProcessMeasurement(MeasurementPackage &meas_in){
     previous_time_ = meas_in.timestamp_;
     
     IsFirstTime = false;
+    return; // TODO: only for uKF?
   }
 
   for (auto &filter : filters_){

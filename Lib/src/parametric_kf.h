@@ -14,14 +14,6 @@ public:
 
 	virtual ~ParametricKF(){};
 	virtual void Step(MeasurementPackage &meas_in) = 0;
-
-protected:
-
-//	virtual void CalculateMuBar() = 0;
-//	virtual void CalculateSigmaBar() = 0;
-//
-//	virtual MatrixXd CalculateMeasurementVar() = 0; // S
-//	virtual VectorXd CalculatePredictedMeasurement() = 0; // Zhat
 };
 
 
@@ -158,7 +150,9 @@ protected:
   void InitWeights();
   MatrixXd GenerateSigPts(const VectorXd &x_in,
       const MatrixXd &Sig_in) const;
-  MatrixXd GenerateAugSigPts() const;
+  MatrixXd GenerateAugSigPts(const VectorXd &m_in,
+      const MatrixXd &P_in,
+      const MatrixXd &nu_in) const;
   MatrixXd Func_SigPtsSet(Func2 &f_in, double dt,
       const MatrixXd &SigSet_in) const;
   VectorXd PredictSigPts(double dt,
@@ -168,6 +162,7 @@ protected:
       const VectorXd &mean_in) const;
   MatrixXd Covariance(const MatrixXd &a_in,
       const MatrixXd &b_in) const;
+  void NormToPi(int Col_in, MatrixXd Mat_in) const;
 
 	// member variables
 
@@ -197,8 +192,26 @@ class RadarUKF : public UnscentedKF {
     void Initialize();
 
   private:
+
+    // member variables
   
     const SensorType Sensor_ = RADAR;
+};
+
+
+class LaserUKF : public UnscentedKF {
+
+  public:
+    
+    LaserUKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in);
+    virtual void Step(MeasurementPackage &meas_in) override final;
+    void Initialize();
+
+  private:
+
+    // member variables
+  
+    const SensorType Sensor_ = LASER;
 };
 #endif /* PARAMETRIC_KF_H_ */
 

@@ -23,6 +23,7 @@ public:
   list<ParametricKF*> filters_;
   void AddLaserLKF();
   void AddRadarEKF();
+  void AddLaserUKF();
   void AddRadarUKF();
   void ProcessMeasurement(MeasurementPackage &meas_in);
   VectorXd GetMu() const {return Mu_;};
@@ -31,6 +32,7 @@ public:
   FusionKF() = delete;
   FusionKF(SensorModel Model_in);
   ~FusionKF();
+  const SensorModel KinematicModel;
 
 private:
 
