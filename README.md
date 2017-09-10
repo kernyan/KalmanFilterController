@@ -1,6 +1,10 @@
 # Kalman Filter Controller
 C++ implementation of sensor fusion on various Kalman Filter algorithms
 
+[//]: # (Image References)
+
+[image1]: diag.png "Parametric Kalman Filter architecture"
+
 The Kalman Filter architecture consists of two main building blocks, 
 1. Individual filters
 2. Fusion of filters
@@ -16,7 +20,7 @@ Currently supported filters
 Additionally, the filters are implemented in the context of sensor fusion with different kinematic models. The table below shows the kinematic models available
 
 | Kalman Filter      |  Radar	       |    Lidar           |
-|:-------------------|:---------------:|:-------------------|
+|:-------------------|:---------------:|:------------------:|
 | Linear             |  -  	       |   Constant Vx, Vy  |
 | Extended    	     | Constant Vx, Vy |	-           |
 | Unscented	     | Constant turnrate & velocity | Constant turnrate & velocity |
@@ -43,7 +47,9 @@ FKF.AddRadarUKF(); // adds Radar Unscented Kalman Filter to fusion controller
 FKF.ProcessMeasurements(Input) // Measurement inputs
 ```
 
-See Test directory for examples
+## Unit Tests
+
+See unit tests contained in Test directory for more examples
 
 [![Build Status](https://travis-ci.org/kernyan/KalmanFilterController.svg?branch=master)](https://travis-ci.org/kernyan/KalmanFilterController)
 

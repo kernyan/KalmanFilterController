@@ -8,6 +8,12 @@
 #include <string>
 #include <fstream>
 #include "parametric_kf.h"
+#include "linear_kf.h"
+#include "extended_kf.h"
+#include "radar_ekf.h"
+#include "unscented_kf.h"
+#include "radar_ukf.h"
+#include "laser_ukf.h"
 
 using namespace std;
 
