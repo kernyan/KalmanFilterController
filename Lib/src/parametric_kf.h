@@ -10,6 +10,8 @@ using Eigen::VectorXd;
 
 class ParametricKF {
 
+  // abstract interface for all other filter implementation
+
 public:
 
 	virtual ~ParametricKF(){};
@@ -32,11 +34,10 @@ public:
 
 protected:
 
-	virtual void CalculateMuBar();// override final;
-	virtual void CalculateSigmaBar();// override final;
-	virtual MatrixXd CalculateMeasurementVar();// override final;
-	virtual VectorXd CalculatePredictedMeasurement();// override final;
-  //void FirstTimeStep(MeasurementPackage &meas_in);
+	virtual void CalculateMuBar();
+	virtual void CalculateSigmaBar();
+	virtual MatrixXd CalculateMeasurementVar(); // S
+	virtual VectorXd CalculatePredictedMeasurement(); // zhat
 
 	// member variables
 
@@ -51,6 +52,7 @@ protected:
 	MatrixXd Ct_; // MeasurementFunction
 	MatrixXd Qt_; // MeasurementSigma
 };
+
 
 class LaserLKF : public LinearKF {
 
@@ -89,10 +91,10 @@ public:
     
 protected:
 
-	virtual void CalculateMuBar();// override final;
-	virtual void CalculateSigmaBar();// override final;
-	virtual MatrixXd CalculateMeasurementVar();// override final;
-	virtual VectorXd CalculatePredictedMeasurement();// override final;
+	virtual void CalculateMuBar();
+	virtual void CalculateSigmaBar();
+	virtual MatrixXd CalculateMeasurementVar();
+	virtual VectorXd CalculatePredictedMeasurement();
   MatrixXd CalculatePredJacobian() const;
   MatrixXd CalculateMeasJacobian() const;
 

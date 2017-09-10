@@ -31,7 +31,6 @@ FusionKF::FusionKF(SensorModel Model_in) :
   case CONSTANT_TURNRATE_VELOCITY:
 
     Mu_ = VectorXd(5);
-    //Mu_ << 0,0,0,0,0; // TODO: Right init?
     Mu_ << 1,1,1,1,0.1;
 
     Sigma_ = MatrixXd(5,5);
@@ -60,7 +59,8 @@ FusionKF::~FusionKF(){
 void FusionKF::AddLaserLKF(){
   
   // Laser Filter
-  
+  assert(KinematicModel == CONSTANT_VELOCITY); // LaseLKF only supported with Constant Velocity model
+
   LaserLKF* LaserFilter = new LaserLKF(Mu_, Sigma_, previous_time_);
   LaserFilter->Initialize();
   filters_.push_back(LaserFilter);
@@ -70,6 +70,8 @@ void FusionKF::AddRadarEKF(){
   
   // Radar Filter
   
+  assert(KinematicModel == CONSTANT_VELOCITY); // RadarEKF only supported with Constant Velocity model
+
   RadarEKF *RadarFilter = new RadarEKF(Mu_, Sigma_, previous_time_);
   RadarFilter->Initialize();
   filters_.push_back(RadarFilter);
@@ -80,6 +82,8 @@ void FusionKF::AddLaserUKF(){
   
   // Radar Filter
   
+  assert(KinematicModel == CONSTANT_TURNRATE_VELOCITY); // LaserUKF only supported with CTRV model
+
   LaserUKF *LaserFilter = new LaserUKF(Mu_, Sigma_, previous_time_);
   LaserFilter->Initialize();
   filters_.push_back(LaserFilter);
@@ -90,6 +94,8 @@ void FusionKF::AddRadarUKF(){
   
   // Radar Filter
   
+  assert(KinematicModel == CONSTANT_TURNRATE_VELOCITY); // RadarUKF only supported with CTRV model
+
   RadarUKF *RadarFilter = new RadarUKF(Mu_, Sigma_, previous_time_);
   RadarFilter->Initialize();
   filters_.push_back(RadarFilter);
@@ -104,7 +110,6 @@ void FusionKF::ProcessMeasurement(MeasurementPackage &meas_in){
     previous_time_ = meas_in.timestamp_;
     
     IsFirstTime = false;
-    return; // TODO: only for uKF?
   }
 
   for (auto &filter : filters_){

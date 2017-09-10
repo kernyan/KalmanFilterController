@@ -259,7 +259,7 @@ TEST_F(RKFTest, PredictAndUpdate){
   }
 }
 
-/*
+
 class FusionTest : public :: testing::Test {
   protected:
 
@@ -432,4 +432,4 @@ TEST(UnscentedTest, SimpleRun){
   meas_in.raw_measurements_ = VectorXd(3);
   meas_in.raw_measurements_ << 5.9214,0.2187,2.0062;
 }
-*/
+

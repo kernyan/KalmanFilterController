@@ -12,6 +12,7 @@ LinearKF::LinearKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in) :
 {
 }
 
+
 void LinearKF::Initialize(MatrixXd &TransFunc_in, 
   MatrixXd &TransSigma_in,
   MatrixXd &MeasFunc_in,
@@ -23,26 +24,26 @@ void LinearKF::Initialize(MatrixXd &TransFunc_in,
   Qt_ = MeasSigma_in;
 }
 
+
 void LinearKF::CalculateMuBar(){
   MuBar_ = At_ * Mu_;
 }
+
 
 void LinearKF::CalculateSigmaBar(){
   SigmaBar_ = At_ * Sigma_ * At_.transpose() + Rt_;
 }
 
+
 MatrixXd LinearKF::CalculateMeasurementVar(){
   return Ct_ * SigmaBar_ * Ct_.transpose() + Qt_;
 }
+
 
 VectorXd LinearKF::CalculatePredictedMeasurement(){
   return Ct_ * MuBar_;
 }
 
-//void LinearKF::FirstTimeStep(MeasurementPackage &meas_in){
-//  previous_time_ = meas_in.timestamp_;
-//  Mu_ = Ct_.transpose() * meas_in.raw_measurements_;
-//}
 
 void LinearKF::Step(MeasurementPackage &meas_in){
   CalculateMuBar();
@@ -61,6 +62,7 @@ LaserLKF::LaserLKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in) :
   noise_ay_(-1)
 {
 }
+
 
 void LaserLKF::Initialize(){
 
@@ -85,6 +87,7 @@ void LaserLKF::Initialize(){
 
   LinearKF::Initialize(At, Rt, Ct, Qt);
 }
+
 
 void LaserLKF::Step(MeasurementPackage &meas_in){
 
@@ -116,6 +119,7 @@ ExtendedKF::ExtendedKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in) :
 {
 }
   
+
 void ExtendedKF::Initialize(Func &g_in,
     MatrixXd &G_in,
     MatrixXd &Rt_in,
@@ -130,13 +134,16 @@ void ExtendedKF::Initialize(Func &g_in,
   Qt_ = Qt_in;
 }
 
+
 void ExtendedKF::CalculateMuBar(){
   MuBar_ = g_(Mu_);
 }
 
+
 void ExtendedKF::CalculateSigmaBar(){
   SigmaBar_ = G_ * Sigma_ * G_.transpose() + Rt_;
 }
+
 
 MatrixXd ExtendedKF::CalculateMeasurementVar(){
   MatrixXd Ht = H_(MuBar_);
@@ -146,6 +153,7 @@ MatrixXd ExtendedKF::CalculateMeasurementVar(){
 VectorXd ExtendedKF::CalculatePredictedMeasurement(){
   return h_(MuBar_);
 }
+
 
 void ExtendedKF::Step(MeasurementPackage &meas_in){
   CalculateMuBar();
@@ -183,7 +191,7 @@ void RadarEKF::Step(MeasurementPackage &meas_in){
   G_(1,3) = dt;
 
   auto G_in = G_;
-  g_ = [G_in](VectorXd Mu_in){
+  g_ = [G_in](VectorXd Mu_in){ // prediction function is assigned here because depends on dt
     return G_in*Mu_in;
   };
 
@@ -403,6 +411,8 @@ MatrixXd UnscentedKF::Covariance(const MatrixXd &a_in,
 
 void UnscentedKF::NormToPi(int Row_in, MatrixXd Mat_in) const {
   
+  // normalize value to within pi range
+
  int Dim = Mat_in.cols();
 
  for (int i = 0; i < Dim; ++i){
@@ -429,7 +439,7 @@ void UnscentedKF::Step(MeasurementPackage &meas_in){
   MatrixXd FirstMoment = CentralMoment(XSig_Pred, Mu_Bar);
   MatrixXd Sigma_Bar=Covariance(FirstMoment,FirstMoment);
 
-  // common to replace with other implementation
+  // common to replace update step with other implementation
   // e.g. 1. with reusing transition prediction sigma pts, or
   //      2. with Linear measurement update if linear
   MatrixXd nu_0 = MatrixXd::Zero(2,2);
@@ -523,10 +533,10 @@ void RadarUKF::Initialize(){
   };
   
   MatrixXd Rt_in = MatrixXd::Identity(n_x_, n_x_);
-  Rt_in(0,0) = 0.15; // TODO: Right init?
+  Rt_in(0,0) = 0.15;
   Rt_in(1,1) = 0.15;
 
-  double noise_a = 4; // TODO: Right init?
+  double noise_a = 4;
   double noise_yawdd = 0.09;
   int Dim = n_aug_ - n_x_;
   MatrixXd nu_in = MatrixXd::Constant(Dim, Dim, 0.0);
@@ -638,10 +648,10 @@ void LaserUKF::Initialize(){
   };
   
   MatrixXd Rt_in = MatrixXd::Identity(n_x_, n_x_);
-  Rt_in(0,0) = 0.15; // TODO: Right init?
+  Rt_in(0,0) = 0.15;
   Rt_in(1,1) = 0.15;
 
-  double noise_a = 4; // TODO: Right init?
+  double noise_a = 4;
   double noise_yawdd = 0.09;
   int Dim = n_aug_ - n_x_;
   MatrixXd nu_in = MatrixXd::Constant(Dim, Dim, 0.0);
