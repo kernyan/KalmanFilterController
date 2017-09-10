@@ -1,11 +1,5 @@
-#include "parametric_kf.h"
-#include "linear_kf.h"
 #include "extended_kf.h"
 #include <iostream>
-
-using namespace std;
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
 
 
 ExtendedKF::ExtendedKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in) :

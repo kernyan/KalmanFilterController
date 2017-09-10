@@ -1,12 +1,7 @@
-#include "parametric_kf.h"
-#include "linear_kf.h"
-#include "extended_kf.h"
 #include "radar_ekf.h"
+#include "tools.h"
 #include <iostream>
 
-using namespace std;
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
 
 RadarEKF::RadarEKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in) :
   ExtendedKF(Mu_in, Sigma_in, t_in),
@@ -40,7 +35,21 @@ void RadarEKF::Step(MeasurementPackage &meas_in){
          dt_3/2*noise_ax_, 0, dt_2*noise_ax_, 0,
          0, dt_3/2*noise_ay_, 0, dt_2*noise_ay_;
 
-  ExtendedKF::Step(meas_in);
+  CalculateMuBar();
+  CalculateSigmaBar();
+  MatrixXd S = CalculateMeasurementVar();
+  MatrixXd Ht = H_(MuBar_);
+  MatrixXd K = SigmaBar_ * Ht.transpose() * S.inverse();
+  VectorXd zhat = CalculatePredictedMeasurement();
+  VectorXd y = meas_in.raw_measurements_ - zhat;
+
+  NormToPi(1, y); // normalize theta to between +/- pi
+
+  if (meas_in.raw_measurements_(1) * zhat(1) <= 0){
+    y << 0,0,0; // do not update when theta flips sign
+  }
+  Mu_ = MuBar_ + K * y;
+  Sigma_ = SigmaBar_ - K * S * K.transpose();
 }
 
 
@@ -68,19 +77,22 @@ void RadarEKF::Initialize(){
 
     float p = sqrt(px*px + py*py);
     float phi = atan2(py, px);
-    if (phi > -M_PI){
-      while (phi > M_PI) phi -= 2*M_PI;
-    } else {
-      while (phi < -M_PI) phi += 2*M_PI;
+    if (fabs(py) < 0.0001 && fabs(px) < 0.0001) cout << "Warning: atan2(0,0) in RadarEKF::Initialize encountered\n";
+
+    float p_dot = 0;
+    if (fabs(p) < 0.0001) {
+      p = 0.0001; // arbitrary small number
+      cout << "Warning: div0 in RadarEKF::Initialize encountered\n";
     }
 
-    float p_dot = (px*vx+py*vy)/p;
+    p_dot = (px*vx+py*vy)/p;
+
     zhat << p, phi, p_dot;
     return zhat;
   };
 
   function<MatrixXd (VectorXd)> H_in = [](VectorXd MuBar_in){
-    MatrixXd Hj(3,4);
+    MatrixXd Hj = MatrixXd::Constant(3, 4, 0.0);
 
     float px = MuBar_in(0);
     float py = MuBar_in(1);
@@ -90,7 +102,10 @@ void RadarEKF::Initialize(){
     float p_mag = px*px + py*py;
     float p_dot = sqrt(p_mag);
 
-    if (p_mag < 0.001) return Hj;
+    if (p_mag < 0.001) {
+      p_mag = 0.0001;  // arbitrary small number
+      cout << "Warning: div0 in RadarEKF::Initialize encountered\n";
+    }
 
     Hj << px/p_dot, py/p_dot, 0, 0,
          -py/p_mag, px/p_mag, 0, 0,
@@ -99,7 +114,7 @@ void RadarEKF::Initialize(){
     return Hj;
   };
 
-  MatrixXd Qt(3,3);
+  MatrixXd Qt = MatrixXd::Constant(3, 3, 0.0);
   Qt << 0.09,0     ,0,
         0   ,0.0009,0,
         0   ,0     ,0.09;

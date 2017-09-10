@@ -1,10 +1,5 @@
-#include "parametric_kf.h"
 #include "unscented_kf.h"
 #include <iostream>
-
-using namespace std;
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
 
 
 UnscentedKF::UnscentedKF(VectorXd &Mu_in, MatrixXd &Sigma_in, long long &t_in) :

@@ -1,11 +1,5 @@
-#include "parametric_kf.h"
-#include "unscented_kf.h"
 #include "laser_ukf.h"
 #include <iostream>
-
-using namespace std;
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
 
 
 void LaserUKF::Step(MeasurementPackage &meas_in){

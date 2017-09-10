@@ -1,12 +1,11 @@
 #ifndef EXTENDED_KF_H_
 #define EXTENDED_KF_H_
 #include "parametric_kf.h"
-#include "linear_kf.h"
 #include "measurement_package.h"
 #include <functional>
 
 
-class ExtendedKF : public ParametricKF{
+class ExtendedKF : public ParametricKF {
 
 public:
 

@@ -1,6 +1,7 @@
 #ifndef RADAR_EKF_H_
 #define RADAR_EKF_H_
 #include "Eigen/Dense"
+#include "extended_kf.h"
 #include "measurement_package.h"
 #include <functional>
 

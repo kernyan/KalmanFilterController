@@ -3,10 +3,6 @@
 #include <iostream>
 #include <vector>
 
-using namespace std;
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
-using std::vector;
 
 FusionKF::FusionKF(SensorModel Model_in) :
   IsFirstTime (true),
