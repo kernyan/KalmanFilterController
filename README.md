@@ -47,6 +47,10 @@ FKF.AddRadarUKF(); // adds Radar Unscented Kalman Filter to fusion controller
 FKF.ProcessMeasurements(Input) // Measurement inputs
 ```
 
+## Mathematical derivation
+1. [Kalman filter](https://kernyan.com/2017/08/25/kalman-filter/)
+2. [Bayes filter](https://kernyan.com/2017/08/20/bayes-filter/)
+
 ## Unit Tests
 
 See unit tests contained in Test directory for more examples
